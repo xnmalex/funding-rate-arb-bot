@@ -2,11 +2,15 @@ mod config;
 mod errors;
 mod features;
 
-use anyhow::Result;
 use tracing::*;
+use axum::{
+    routing::{get, post},
+    http::StatusCode,
+    Json, Router,
+};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main(){
     // Logging
     tracing_subscriber::fmt()
         .with_env_filter("info")
@@ -14,12 +18,21 @@ async fn main() -> Result<()> {
 
     info!("Starting application…");
 
-    // Load config
-    let cfg = config::AppConfig::from_env()?;
-    info!("Loaded config: {:?}", cfg);
 
-    // Run an example async task
-    features::run_example().await?;
+    // build our application with a route
+    let app = Router::new()
+        // `GET /` goes to `root`
+        .route("/", get(root));
+        // `POST /users` goes to `create_user`
+        // .route("/users", post(create_user));
 
-    Ok(())
+    // run our app with hyper, listening globally on port 3000
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
+
+// basic handler that responds with a static string
+async fn root() -> &'static str {
+    "Hello, World!"
+}
+
